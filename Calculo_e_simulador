@@ -1,20 +1,149 @@
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+
+# Simulador de cálculo fatorial do PROART com apresentação de gráfico global
+# Apresentação de nivelamento de riscos psicossociais
+# por Thiago Moreno
+def coletar_respostas(perguntas):
+    respostas = []
+    print("Responda cada pergunta com um valor de 1 (Nunca) a 5 (Sempre) ou digite 'sair' para encerrar:\n")
+    for pergunta in perguntas:
+        while True:
+            try:
+                entrada = input(f"{pergunta}: ").strip().lower()
+                if entrada == "sair":
+                    print("Encerrando a coleta de respostas.")
+                    return np.array(respostas) if respostas else np.array([0])
+                resposta = int(entrada)
+                if resposta in range(1, 6):
+                    respostas.append(resposta)
+                    break
+                else:
+                    print("Por favor, insira um número entre 1 e 5.")
+            except ValueError:
+                print("Entrada inválida. Digite um número entre 1 e 5 ou 'sair' para encerrar.")
+    return np.array(respostas)
+
+def simular_respostas(perguntas_por_grupo, num_usuarios=10):
+    print(f"\nGerando simulação para {num_usuarios} usuários...\n")
+    dados_simulados = []
+    for _ in range(num_usuarios):
+        respostas_usuario = {}
+        for grupo, perguntas in perguntas_por_grupo.items():
+            respostas_usuario[grupo] = np.array([random.randint(1, 5) for _ in perguntas])
+        dados_simulados.append(respostas_usuario)
+    return dados_simulados
+
+def calcular_media(respostas):
+    return np.mean(respostas) if respostas.size > 0 else 0
+
+def classificar_risco(media):
+    if media >= 3.70:
+        return "Risco Baixo"
+    elif media >= 2.30:
+        return "Risco Médio"
+    else:
+        return "Risco Alto"
+
+def calcular_probabilidades(dados_usuarios):
+    probabilidades = {}
+    total_usuarios = len(dados_usuarios)
+    for grupo in dados_usuarios[0].keys():
+        contagem = {"Risco Baixo": 0, "Risco Médio": 0, "Risco Alto": 0}
+        for usuario in dados_usuarios:
+            media = calcular_media(usuario[grupo])
+            classificacao = classificar_risco(media)
+            contagem[classificacao] += 1
+        probabilidades[grupo] = {k: v / total_usuarios for k, v in contagem.items()}
+    return probabilidades
+
+import matplotlib.pyplot as plt
+
+def exibir_grafico_probabilidades(probabilidades):
+    grupos = list(probabilidades.keys())
+    riscos = ["Risco Baixo", "Risco Médio", "Risco Alto"]
+    cores = ['green', 'yellow', 'red']  # Define cores para cada nível de risco
+
+    fig, axs = plt.subplots(len(grupos), 1, figsize=(8, 8))  # Cria subplots para cada grupo
+    fig.suptitle("Probabilidade de cada nível de risco por grupo", fontsize=16)
+
+    for i, grupo in enumerate(grupos):
+        valores = [probabilidades[grupo][risco] for risco in riscos]
+        axs[i].pie(valores, labels=riscos, autopct='%1.1f%%', startangle=90, colors=cores)
+        axs[i].set_title(grupo)
+
+    plt.tight_layout()  # Ajusta o layout para evitar sobreposições
+    plt.show()
+
+def coletar_multiplos_usuarios(perguntas_por_grupo):
+    dados_usuarios = []
+    while True:
+        print("\nColetando dados para um novo usuário...")
+        respostas_usuario = {}
+        for grupo, perguntas in perguntas_por_grupo.items():
+            print(f"\n--- {grupo} ---")
+            respostas_usuario[grupo] = coletar_respostas(perguntas)
+        dados_usuarios.append(respostas_usuario)
+        continuar = input("Deseja adicionar outro usuário? (s/n): ").strip().lower()
+        if continuar != 's':
+            break
+    return dados_usuarios
+
+def exibir_resultados(dados_usuarios):
+    print("\n--- RESULTADOS GERAIS POR USUÁRIO ---")
+    for i, respostas_usuario in enumerate(dados_usuarios, start=1):
+        print(f"\nUsuário {i}:")
+        for grupo, respostas in respostas_usuario.items():
+            media = calcular_media(respostas)
+            classificacao = classificar_risco(media)
+            print(f"{grupo}: Média {media:.2f} - {classificacao}")
+
+    print("\n--- RESULTADOS GERAIS POR GRUPO ---")
+    grupos = dados_usuarios[0].keys()
+    for grupo in grupos:
+        todas_respostas = np.concatenate([usuario[grupo] for usuario in dados_usuarios])
+        media_grupo = calcular_media(todas_respostas)
+        classificacao_grupo = classificar_risco(media_grupo)
+        print(f"{grupo}: Média {media_grupo:.2f} - {classificacao_grupo}")
+
+    probabilidades = calcular_probabilidades(dados_usuarios)
+    exibir_grafico_probabilidades(probabilidades)
+
 def main():
     perguntas_por_grupo = {
-        # ... (código das perguntas) ...
+        "Organização do Trabalho": [
+            "Os recursos de trabalho são suficientes para realizar as tarefas?",
+            "O número de trabalhadores é suficiente para executar as tarefas?",
+            "Os equipamentos são adequados para a realização das tarefas?",
+            "O espaço físico disponível para o trabalho é adequado?",
+            "O ritmo de trabalho é adequado?",
+            "As tarefas têm prazos flexíveis?",
+        ],
+        "Estilos de Gestão": [
+            "Os gestores se preocupam com o bem-estar dos trabalhadores?",
+            "O trabalho coletivo é valorizado pelos gestores?",
+            "As decisões nesta organização são tomadas em grupo?",
+        ],
+        "Sofrimento no Trabalho": [
+            "Meu trabalho é desgastante?",
+            "Sinto-me desmotivado para realizar minhas tarefas?",
+            "Meu trabalho me causa insatisfação?",
+        ],
+        "Danos Relacionados ao Trabalho": [
+            "Sinto dores no corpo devido ao trabalho?",
+            "Tenho dificuldades nas relações sociais por causa do trabalho?",
+            "Perdi minha auto-confiança devido ao trabalho?",
+        ]
     }
 
     escolha = input("Deseja rodar a simulação automática? (s/n): ").strip().lower()
     if escolha == 's':
-        while True:
-            try:
-                num_simulacoes = int(input("Quantas simulações você deseja realizar? "))
-                if num_simulacoes > 0:
-                    break
-                else:
-                    print("Por favor, insira um número maior que 0.")
-            except ValueError:
-                print("Entrada inválida. Digite um número inteiro.")
-
-        dados_usuarios = simular_respostas(perguntas_por_grupo, num_simulacoes)
+        dados_usuarios = simular_respostas(perguntas_por_grupo)
     else:
-        dados_usuarios
+        dados_usuarios = coletar_multiplos_usuarios(perguntas_por_grupo)
+
+    exibir_resultados(dados_usuarios)
+
+if __name__ == "__main__":
+    main()
